@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Bro</title>
+    <!-- CDNs for Tailwind, GSAP, Three.js, and Canvas Confetti -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@700&display=swap');
+
+        /* Global Styles */
+        body { margin: 0; overflow: hidden; background: #050505; color: white; font-family: 'Inter', sans-serif; cursor: none; }
+        
+        /* Custom Cursor */
+        #cursor { position: fixed; width: 15px; height: 15px; background: #ef4444; border-radius: 50%; pointer-events: none; z-index: 99999; box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.8), 0 0 40px 10px rgba(168, 85, 247, 0.5); transition: transform 0.1s ease-out; transform: translate(-50%, -50%); }
+
+        /* Midnight Street Background */
+        .street-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #09090b; z-index: -3; overflow: hidden; }
+        .neon-streak { position: absolute; height: 2px; border-radius: 2px; filter: blur(3px); opacity: 0.6; animation: pan-streak linear infinite; }
+        @keyframes pan-streak { 0% { transform: translateX(100vw); } 100% { transform: translateX(-200px); } }
+
+        /* Three.js Background Layer */
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; }
+        
+        /* Preloader */
+        #preloader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; display: flex; justify-content: center; align-items: center; flex-direction: column; z-index: 10000; }
+        #year-text { font-size: 6rem; font-family: 'Space Grotesk', sans-serif; font-weight: bold; color: transparent; -webkit-text-stroke: 2px #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+        .loading-bar-container { width: 300px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+        #loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #ef4444, #a855f7); box-shadow: 0 0 15px #ef4444; }
+        #pre-msg { display: none; font-size: 3.5rem; font-family: 'Space Grotesk', sans-serif; font-weight: bold; color: #ef4444; text-transform: uppercase; text-shadow: 0 0 30px rgba(239,68,68,0.8), 0 0 60px rgba(168,85,247,0.6); text-align: center; line-height: 1.2; padding: 0 20px; }
+
+        /* Global Vinyl Player */
+        #vinyl-player { position: fixed; bottom: 30px; right: 30px; width: 80px; height: 80px; z-index: 900; cursor: pointer; transition: transform 0.3s; }
+        #vinyl-player:hover { transform: scale(1.1); }
+        .vinyl-disc { width: 100%; height: 100%; background: radial-gradient(circle, #111 30%, #222 35%, #000 40%, #222 45%, #000 50%, #222 60%, #111 70%); border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 15px rgba(239, 68, 68, 0.3); display: flex; justify-content: center; align-items: center; position: relative; }
+        .vinyl-disc::after { content: ''; width: 25px; height: 25px; background: #ef4444; border-radius: 50%; border: 2px solid #000; }
+        .spin { animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .music-note { position: absolute; top: -10px; right: -10px; font-size: 20px; opacity: 0; pointer-events: none; }
+        .playing .music-note { animation: float-note 1.5s linear infinite; }
+        @keyframes float-note { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-30px) scale(1.5); opacity: 0; } }
+
+        /* Typography */
+        h1, h2 { font-family: 'Space Grotesk', sans-serif; background: linear-gradient(90deg, #ef4444, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Glassmorphism Cards */
+        .step-container { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 650px; z-index: 10; opacity: 0; }
+        .glass-card { background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 3rem; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(239, 68, 68, 0.05); text-align: center; position: relative; transform-style: preserve-3d; transition: transform 0.1s; }
+        
+        /* Buttons */
+        .btn { display: inline-block; margin-top: 2rem; padding: 14px 36px; background: linear-gradient(90deg, #b91c1c, #7e22ce); border-radius: 50px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 20px rgba(185, 28, 28, 0.6); border: none; color: white; position: relative; z-index: 50; }
+        .btn:hover { transform: scale(1.1); box-shadow: 0 0 35px rgba(126, 34, 206, 0.9); }
+        
+        /* Bento Grid */
+        .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: left; margin-top: 1.5rem; }
+        .bento-card { background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s; }
+        .bento-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.05); border-color: rgba(239, 68, 68, 0.3); }
+        .col-span-2 { grid-column: span 2; }
+        
+        /* Photo Marquee */
+        .marquee-wrapper { overflow: hidden; white-space: nowrap; width: 100%; padding: 3rem 0; margin-top: 1rem; position: relative; z-index: 5; }
+        .marquee-content { display: inline-block; animation: scroll 35s linear infinite; }
+        .marquee-wrapper:hover .marquee-content { animation-play-state: paused; }
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .polaroid { display: inline-block; width: 150px; height: 180px; margin: 0 15px; background: #fafafa; padding: 8px 8px 24px 8px; border-radius: 4px; box-shadow: 0 15px 35px rgba(0,0,0,0.8); transform: rotate(-3deg); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .polaroid:nth-child(even) { transform: rotate(4deg); }
+        .polaroid img { width: 100%; height: 100%; object-fit: cover; background: #111; border-radius: 2px; }
+        .polaroid:hover { transform: scale(1.7) rotate(0) translateY(-10px); z-index: 100; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.9); }
+        
+        /* Final Text */
+        .hidden-text { display: none; color: #f97316; font-size: 1.8rem; font-weight: bold; margin-top: 2rem; text-shadow: 0 0 20px rgba(249, 115, 22, 0.8), 0 0 40px rgba(239, 68, 68, 0.6); font-family: 'Space Grotesk', sans-serif; line-height: 1.3; }
+        
+        /* Step Progress Bar */
+        #step-progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.05); z-index: 900; }
+        #step-progress { width: 0%; height: 100%; background: linear-gradient(90deg, #ef4444, #a855f7); transition: width 0.6s ease; box-shadow: 0 0 10px #ef4444; }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+
+    <!-- Midnight Street Background -->
+    <div class="street-bg" id="street-bg"></div>
+
+    <!-- Three.js Embers -->
+    <div id="canvas-container"></div>
+
+    <!-- Global Vinyl Player -->
+    <div id="vinyl-player" onclick="toggleMusic()">
+        <div class="vinyl-disc" id="disc"></div>
+        <div class="music-note">🎵</div>
+        <audio id="bg-music" src="music.mp3" loop></audio>
+    </div>
+    
+    <!-- Preloader / Roulette -->
+    <div id="preloader">
+        <div id="pre-content">
+            <div id="year-text">2004</div>
+            <div class="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+        </div>
+        <div id="pre-msg">happy birthday ammede fav mwone</div>
+    </div>
+
+    <!-- Main Progress Bar -->
+    <div id="step-progress-container">
+        <div id="step-progress"></div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-container" id="step1">
+        <div class="glass-card tilt-card">
+            <div style="font-size: 5rem; animation: float 3s infinite ease-in-out;">🚀</div>
+            <h1 class="text-5xl mt-6">Hey Bro,</h1>
+            <p class="mt-4 text-gray-300 text-lg leading-relaxed">I built a little digital space just to say happy birthday and celebrate the legend himself.</p>
+            <button class="btn" onclick="nextStep(1)">Initialize</button>
+        </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-container" id="step2">
+        <div class="glass-card tilt-card">
+            <div style="font-size: 5rem;">🎉</div>
+            <h1 class="text-5xl mt-6">Level Up!</h1>
+            <p class="mt-4 text-gray-300 text-lg leading-relaxed">Another year older, probably not much wiser, but we can pretend for today. Seriously though, proud to call you my brother.</p>
+            <button class="btn" onclick="nextStep(2)">Next Level...</button>
+        </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-container" id="step3">
+        <div class="glass-card tilt-card">
+            <h2 class="text-4xl">Player Stats & Traits</h2>
+            <div class="bento-grid">
+                <div class="bento-card col-span-2">
+                    <span class="text-xl">🔥</span> <b class="text-white text-lg">The Anchor</b><br>
+                    <span class="text-sm text-gray-400">Through all the crazy stuff, you're the one guy I can always count on.</span>
+                </div>
+                <div class="bento-card">
+                    <span class="text-xl">🎮</span> <b class="text-white text-lg">Gaming Skill</b><br>
+                    <span class="text-sm text-gray-400">Still getting carried by me, but A for effort.</span>
+                </div>
+                <div class="bento-card">
+                    <span class="text-xl">🚀</span> <b class="text-white text-lg">Top Speed</b><br>
+                    <span class="text-sm text-gray-400">Always hustling and chasing those goals.</span>
+                </div>
+                <div class="bento-card col-span-2">
+                    <span class="text-xl">🏆</span> <b class="text-white text-lg">Solid Sense of Humor</b><br>
+                    <span class="text-sm text-gray-400">Even if your jokes are terrible half the time, we always have the best laughs.</span>
+                </div>
+            </div>
+            <button class="btn" onclick="nextStep(3)">Open the Archives...</button>
+        </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-container" id="step4">
+        <div class="glass-card tilt-card">
+            <div style="font-size: 5rem;">🎧</div>
+            <h2 class="text-4xl mt-4">The Birthday Vibe</h2>
+            <p class="mt-4 text-gray-300 text-lg leading-relaxed">Every legend needs a theme song. Drop the needle on the vinyl in the corner.</p>
+            <button class="btn" onclick="nextStep(4)">View the Records...</button>
+        </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-container" id="step5" style="max-width: 950px;">
+        <div class="glass-card tilt-card">
+            <h2 class="text-4xl">Legendary Times</h2>
+            <p class="mt-2 text-gray-300 text-lg">Too many crazy memories to count, and plenty more still to make.</p>
+            <div class="marquee-wrapper">
+                <div class="marquee-content" id="marquee-inner">
+                    <!-- JS injects 14 images here -->
+                </div>
+            </div>
+            <button class="btn" onclick="nextStep(5)">The Finale...</button>
+        </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-container" id="step6">
+        <div class="glass-card tilt-card">
+            <div style="font-size: 5rem;">🏆</div>
+            <h1 class="text-5xl mt-6">My Wish For You</h1>
+            <p class="mt-4 text-gray-300 text-lg leading-relaxed" id="final-paragraph">Keep grinding, keep winning, and let's make this next year your best one yet. Have an awesome birthday, bro.</p>
+            
+            <div id="final-text" class="hidden-text">knappe nee entey pc pottichonda allarunell korachude nalleth set akkarunn</div>
+            <button class="btn" id="confetti-btn" onclick="fireConfetti()">Drop the Confetti!</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. Custom Mouse Cursor tracking & Hover Magnetism
+        const cursor = document.getElementById('cursor');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        });
+
+        // 2. Preloader Roulette (2004 - 2026)
+        let currentYear = 2004;
+        const targetYear = 2026;
+        const yearEl = document.getElementById('year-text');
+        const loadBar = document.getElementById('loading-bar');
+        
+        let rouletteInterval = setInterval(() => {
+            currentYear++;
+            yearEl.innerText = currentYear;
+            let progress = ((currentYear - 2004) / (targetYear - 2004)) * 100;
+            loadBar.style.width = progress + '%';
+            
+            if (currentYear >= targetYear) {
+                clearInterval(rouletteInterval);
+                document.getElementById('pre-content').style.display = 'none';
+                
+                const preMsg = document.getElementById('pre-msg');
+                preMsg.style.display = 'block';
+                
+                // Flash neon effect
+                gsap.fromTo(preMsg, 
+                    { opacity: 0, scale: 0.8 }, 
+                    { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }
+                );
+                
+                // Hold for 2 seconds, then transition to Step 1
+                setTimeout(() => {
+                    gsap.to('#preloader', { opacity: 0, duration: 1, ease: "power2.inOut", onComplete: () => {
+                        document.getElementById('preloader').style.display = 'none';
+                        const step1 = document.getElementById('step1');
+                        step1.style.display = 'block';
+                        gsap.to(step1, { opacity: 1, duration: 1 });
+                        gsap.fromTo(step1.querySelector('.glass-card'), { y: 50 }, { y: 0, duration: 1, ease: "back.out(1.5)" });
+                    }});
+                }, 2000);
+            }
+        }, 120); // Speed of the roulette counting
+
+        // 3. Generate Midnight Street Neon Streaks
+        const streetBg = document.getElementById('street-bg');
+        const colors = ['#ef4444', '#a855f7', '#fb923c'];
+        for(let i=0; i<15; i++) {
+            let streak = document.createElement('div');
+            streak.className = 'neon-streak';
+            streak.style.top = Math.random() * 100 + 'vh';
+            streak.style.width = (Math.random() * 200 + 50) + 'px';
+            streak.style.background = colors[Math.floor(Math.random() * colors.length)];
+            streak.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            streak.style.animationDelay = (Math.random() * 2) + 's';
+            streetBg.appendChild(streak);
+        }
+
+        // 4. Global Vinyl Music Player
+        const bgMusic = document.getElementById('bg-music');
+        const disc = document.getElementById('disc');
+        const playerContainer = document.getElementById('vinyl-player');
+        
+        function toggleMusic() {
+            if (bgMusic.paused) {
+                bgMusic.play();
+                disc.classList.add('spin');
+                playerContainer.classList.add('playing');
+            } else {
+                bgMusic.pause();
+                disc.classList.remove('spin');
+                playerContainer.classList.remove('playing');
+            }
+        }
+
+        // 5. Generate 14 Images for Marquee
+        const marquee = document.getElementById('marquee-inner');
+        let imagesHTML = '';
+        for(let i=1; i<=14; i++) {
+            imagesHTML += `<div class="polaroid"><img src="${i}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'150\\' height=\\'180\\'><rect width=\\'150\\' height=\\'180\\' fill=\\'%23222\\'/></svg>'" alt="Memory ${i}"></div>`;
+        }
+        marquee.innerHTML = imagesHTML + imagesHTML; // Duplicate for smooth looping
+
+        // 6. Step Navigation Logic
+        function nextStep(current) {
+            const currentStep = document.getElementById('step' + current);
+            const nextStepId = document.getElementById('step' + (current + 1));
+            
+            document.getElementById('step-progress').style.width = ((current) / 5) * 100 + '%';
+
+            gsap.to(currentStep, { opacity: 0, scale: 0.9, duration: 0.4, ease: "power2.in", onComplete: () => {
+                currentStep.style.display = 'none';
+                nextStepId.style.display = 'block';
+                gsap.fromTo(nextStepId, { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" });
+                gsap.fromTo(nextStepId.querySelector('.glass-card'), { y: 40 }, { y: 0, duration: 0.8, ease: "back.out(1.5)" });
+            }});
+        }
+
+        // 7. Confetti Finale
+        function fireConfetti() {
+            gsap.to('#confetti-btn', {opacity: 0, scale: 0, duration: 0.3, onComplete: () => {
+                document.getElementById('confetti-btn').style.display = 'none';
+                document.getElementById('final-paragraph').style.display = 'none';
+                document.getElementById('final-text').style.display = 'block';
+                gsap.fromTo("#final-text", {y: 50, opacity: 0, scale: 0.8}, {y: 0, opacity: 1, scale: 1, duration: 0.8, ease: "elastic.out(1, 0.5)"});
+            }});
+            
+            emberSpeed = 0.05; // Speed up background particles
+
+            const end = Date.now() + 10 * 1000;
+            const colors = ['#ef4444', '#a855f7', '#fb923c', '#ffffff'];
+
+            (function frame() {
+                confetti({ particleCount: 8, angle: 60, spread: 60, origin: { x: 0 }, colors: colors, zIndex: 9000 });
+                confetti({ particleCount: 8, angle: 120, spread: 60, origin: { x: 1 }, colors: colors, zIndex: 9000 });
+                if (Date.now() < end) { requestAnimationFrame(frame); }
+            }());
+        }
+
+        // 8. Three.js Background System (Floating Embers reacting to mouse)
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const emberGeo = new THREE.SphereGeometry(0.05, 8, 8);
+        const emberMat = new THREE.MeshBasicMaterial({color: 0xef4444, transparent: true, opacity: 0.8});
+        const embers = [];
+        let emberSpeed = 0.005;
+
+        for(let i=0; i<60; i++) {
+            const mesh = new THREE.Mesh(emberGeo, emberMat);
+            mesh.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10 - 2);
+            // Save initial positions for organic movement
+            mesh.userData = {
+                x: mesh.position.x, y: mesh.position.y, z: mesh.position.z,
+                speed: Math.random() * 0.02 + 0.01,
+                angle: Math.random() * Math.PI * 2
+            };
+            scene.add(mesh);
+            embers.push(mesh);
+        }
+
+        camera.position.z = 8;
+
+        // Map mouse position for Three.js
+        let tX = 0, tY = 0;
+        document.addEventListener('mousemove', (e) => {
+            tX = (e.clientX / window.innerWidth) * 2 - 1;
+            tY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            embers.forEach(ember => {
+                // Natural floating up
+                ember.userData.angle += ember.userData.speed;
+                ember.position.y += emberSpeed;
+                ember.position.x += Math.sin(ember.userData.angle) * 0.01;
+                
+                // Wrap around
+                if (ember.position.y > 10) ember.position.y = -10;
+
+                // Mouse avoidance (scatter)
+                const dx = ember.position.x - (tX * 10);
+                const dy = ember.position.y - (tY * 10);
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist < 3) {
+                    ember.position.x += dx * 0.02;
+                    ember.position.y += dy * 0.02;
+                }
+            });
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 9. Parallax Tilt on Cards
+        const cards = document.querySelectorAll('.tilt-card');
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 40;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 40;
+            cards.forEach(card => {
+                card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            });
+        });
+    </script>
+</body>
+</html>
